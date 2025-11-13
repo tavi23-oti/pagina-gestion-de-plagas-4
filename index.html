@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control de Enfermedades y Plagas</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="styles.css"> 
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200">
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out dark:bg-gray-800 hidden">
+        <div class="p-6">
+            <h2 class="text-xl font-bold text-green-600 dark:text-green-400"><i class="fas fa-heartbeat mr-2"></i>Sistema de Control de Plagas</h2>
+        </div>
+        <nav class="mt-6">
+            <a href="#" onclick="mostrarSeccion('panelPrincipal')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-green-100 dark:text-gray-300 dark:hover:bg-gray-700"><i class="fas fa-home mr-3"></i>Panel Principal</a>
+            <a href="#" onclick="mostrarSeccion('perfil')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-green-100 dark:text-gray-300 dark:hover:bg-gray-700"><i class="fas fa-user mr-3"></i>Perfil</a>
+            <a href="#" onclick="mostrarSeccion('enfermedades')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-green-100 dark:text-gray-300 dark:hover:bg-gray-700"><i class="fas fa-clipboard-list mr-3"></i>Enfermedades</a>
+            <a href="#" onclick="mostrarSeccion('mapa')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-green-100 dark:text-gray-300 dark:hover:bg-gray-700"><i class="fas fa-map-marker-alt mr-3"></i>Mapa</a>
+            <a id="linkAdmin" href="#" onclick="mostrarSeccion('admin')" class="flex items-center px-6 py-3 text-gray-700 hover:bg-green-100 dark:text-gray-300 dark:hover:bg-gray-700 hidden"><i class="fas fa-cog mr-3"></i>Panel Admin</a>
+            <a href="#" onclick="logout()" class="flex items-center px-6 py-3 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900 mt-auto"><i class="fas fa-sign-out-alt mr-3"></i>Cerrar Sesión</a>
+        </nav>
+    </div>
+
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+    <div class="md:ml-64 p-6">
+        <header id="mainHeader" class="flex justify-between items-center mb-8 hidden">
+            <div class="flex items-center md:hidden" onclick="toggleSidebar()">
+                <i class="fas fa-bars text-2xl text-green-600 cursor-pointer"></i>
+            </div>
+            <h1 id="tituloSeccion" class="text-3xl font-bold text-gray-800 dark:text-white">Panel Principal</h1>
+            <div class="flex items-center space-x-4">
+                <button onclick="toggleModoOscuro()" class="p-2 rounded-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"><i class="fas fa-moon"></i></button>
+                <span id="saludoUsuario" class="text-green-600 font-semibold dark:text-green-400"></span>
+            </div>
+        </header>
+
+        <div id="seccionAuth" class="auth-container">
+            <div class="bg-white rounded-lg shadow-md p-6 max-w-md w-full dark:bg-gray-800">
+                <h1 class="text-2xl font-bold text-gray-900 mb-4 text-center dark:text-white">Bienvenido</h1>
+                <p class="text-gray-600 mb-6 text-center dark:text-gray-400">Inicia sesión o regístrate para gestionar enfermedades</p>
+                <div class="flex justify-center mb-4">
+                    <button id="btnLogin" class="px-4 py-2 bg-green-600 text-white rounded-md mr-2">Login</button>
+                    <button id="btnRegistro" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md dark:bg-gray-600 dark:text-gray-300">Registro</button>
+                </div>
+                <div id="formLogin" class="space-y-4">
+                    <div>
+                        <label for="emailLogin" class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Email</label>
+                        <input type="email" id="emailLogin" placeholder="tu@email.com" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="passwordLogin" class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Password</label>
+                        <input type="password" id="passwordLogin" placeholder="Contraseña" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <button id="loginBtn" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">Iniciar Sesión</button>
+                </div>
+                <div id="formRegistro" class="space-y-4 hidden">
+                    <div>
+                        <label for="emailRegistro" class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Email</label>
+                        <input type="email" id="emailRegistro" placeholder="tu@email.com" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="passwordRegistro" class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Password</label>
+                        <input type="password" id="passwordRegistro" placeholder="Contraseña (mín. 6 chars)" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <button id="registroBtn" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">Registrarse</button>
+                </div>
+                <p id="mensajeAuth" class="text-center text-sm mt-4 hidden"></p>
+            </div>
+        </div>
+
+        <div id="seccionPrincipal" class="hidden">
+            <section id="panelPrincipal" class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Tus Enfermedades</h3>
+                        <p id="statsMisEnfermedades" class="text-3xl font-bold text-green-600 mt-2 dark:text-green-400">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Total Usuarios</h3>
+                        <p id="statsTotalUsuarios" class="text-3xl font-bold text-blue-600 mt-2 dark:text-blue-400">0</p>
+                    </div>
+                    <div id="statsAdmin" class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800 hidden">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Enfermedades Globales</h3>
+                        <p id="statsTotalEnfermedades" class="text-3xl font-bold text-red-600 mt-2 dark:text-red-400">0</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Notificaciones Recientes</h3>
+                    <ul id="notificaciones" class="space-y-2"></ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-300">Estadísticas de Gravedad</h3>
+                    <div class="w-full md:w-2/3 mx-auto">
+                        <canvas id="gravedadChart"></canvas>
+                    </div>
+                </div>
+                <button onclick="exportarDatos()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"><i class="fas fa-download mr-2"></i>Exportar Datos</button>
+            </section>
+
+            <section id="perfil" class="hidden space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Perfil de Usuario</h2>
+                    <div class="flex items-center space-x-6">
+                        <div class="relative">
+                            <img id="fotoPerfil" src="https://via.placeholder.com/150" alt="Foto Perfil" class="w-32 h-32 rounded-full object-cover border-4 border-green-200 dark:border-green-700">
+                            <input type="file" id="inputFotoPerfil" accept="image/*" class="hidden" onchange="cambiarFotoPerfil(event)">
+                            <button onclick="document.getElementById('inputFotoPerfil').click()" class="absolute bottom-0 right-0 bg-green-600 text-white p-2 rounded-full shadow-md"><i class="fas fa-camera"></i></button>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Nombre Completo</label>
+                            <input type="text" id="nombrePerfil" class="w-full px-3 py-2 border rounded-md mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Email</label>
+                            <input type="email" id="emailPerfil" class="w-full px-3 py-2 border rounded-md mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white" readonly>
+                            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Rol</label>
+                            <input type="text" id="rolPerfil" class="w-full px-3 py-2 border rounded-md mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white" readonly>
+                            <button onclick="guardarPerfil()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">Guardar Cambios</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="enfermedades" class="hidden space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Reporte de Enfermedades</h2>
+                    <form id="formEnfermedad" class="space-y-4">
+                        <div>
+                            <label for="nombreEnfermedad" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de la Enfermedad</label>
+                            <input type="text" id="nombreEnfermedad" required class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        </div>
+                        <div>
+                            <label for="sintomas" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Síntomas (separados por coma)</label>
+                            <input type="text" id="sintomas" required class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        </div>
+                        <div>
+                            <label for="localizacion" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Localización</label>
+                            <div id="mapaContainer" class="w-full h-96 rounded-lg"></div>
+                            <input type="hidden" id="latitud">
+                            <input type="hidden" id="longitud">
+                        </div>
+                        <div>
+                            <label for="gravedad" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nivel de Gravedad</label>
+                            <select id="gravedad" required class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                <option value="bajo">Bajo</option>
+                                <option value="moderado">Moderado</option>
+                                <option value="alto">Alto</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="fotoEnfermedad" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Subir una foto (opcional)</label>
+                            <input type="file" id="fotoEnfermedad" accept="image/*" class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        </div>
+                        <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">Reportar Enfermedad</button>
+                    </form>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Mis Reportes</h2>
+                    <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-6">
+                        <input type="text" id="filtroBusqueda" placeholder="Buscar por nombre o síntoma..." class="w-full md:flex-1 px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <select id="filtroGravedad" class="w-full md:w-auto px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="">Filtrar por Gravedad</option>
+                            <option value="bajo">Bajo</option>
+                            <option value="moderado">Moderado</option>
+                            <option value="alto">Alto</option>
+                        </select>
+                    </div>
+                    <div id="listaEnfermedades" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    </div>
+                </div>
+            </section>
+
+            <section id="mapa" class="hidden space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Mapa de Casos Reportados</h2>
+                    <div id="mapaGeneral" class="w-full h-96 rounded-lg"></div>
+                </div>
+            </section>
+            
+            <section id="admin" class="hidden space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Panel de Administración</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300">Gestión de Usuarios</h3>
+                            <ul id="listaUsuarios" class="mt-2 space-y-2"></ul>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300">Gestión de Reportes</h3>
+                            <ul id="listaReportesAdmin" class="mt-2 space-y-2"></ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div id="modalEditar" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal()">&times;</span>
+            <h2 class="text-xl font-bold mb-4">Editar Reporte de Enfermedad</h2>
+            <form id="formEditarEnfermedad" class="space-y-4">
+                <input type="hidden" id="editId">
+                <div>
+                    <label for="editNombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de la Enfermedad</label>
+                    <input type="text" id="editNombre" required class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                <div>
+                    <label for="editSintomas" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Síntomas (separados por coma)</label>
+                    <input type="text" id="editSintomas" required class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                <div>
+                    <label for="editGravedad" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nivel de Gravedad</label>
+                    <select id="editGravedad" required class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="bajo">Bajo</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="alto">Alto</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">Guardar Cambios</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalMensaje" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal()">&times;</span>
+            <h2 class="text-xl font-bold mb-4">Enviar Mensaje a Usuario</h2>
+            <form id="formMensaje">
+                <input type="hidden" id="mensajeUsuarioId">
+                <p id="mensajeDestinatario" class="text-gray-600 dark:text-gray-400 mb-4"></p>
+                <textarea id="mensajeTexto" rows="4" class="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Escribe tu mensaje..."></textarea>
+                <button type="submit" class="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Enviar Mensaje</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 right-4 z-[1001] space-y-2"></div>
+
+    <script src="app.js"></script> 
+</body>
+</html>
